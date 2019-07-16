@@ -19,6 +19,8 @@ namespace BookCase.Models
         
         
         [Required]
+        [DataType(DataType.Date)]
+        [DisplayFormat(DataFormatString = "{0:MM-dd-yyyy}", ApplyFormatInEditMode = true)]
         public DateTime PublishDate { get; set; }
         [Required]
         public int AuthorId { get; set; }

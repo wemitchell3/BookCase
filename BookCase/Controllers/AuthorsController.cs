@@ -7,9 +7,14 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using BookCase.Data;
 using BookCase.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 
 namespace BookCase.Controllers
-{
+{   
+    // Using th Authorize attribute to ensure the user is logged in before they can 
+    // use any of the controller methods.
+    [Authorize]
     public class AuthorsController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -21,7 +26,7 @@ namespace BookCase.Controllers
 
         // GET: Authors
         public async Task<IActionResult> Index()
-        {
+        {            
             return View(await _context.Author.ToListAsync());
         }
 

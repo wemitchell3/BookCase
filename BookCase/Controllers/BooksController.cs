@@ -9,6 +9,7 @@ using BookCase.Data;
 using BookCase.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authorization;
+using BookCase.Models.ViewModels;
 
 namespace BookCase.Controllers
 {
@@ -24,6 +25,7 @@ namespace BookCase.Controllers
             _userManager = userManager;
         }
 
+        
         // GET: Books
         public async Task<IActionResult> Index()
         {
@@ -34,6 +36,7 @@ namespace BookCase.Controllers
                     .Include(b => b.Author)
                     .Include(b => b.Owner)
                     .Where(b => b.OwnerId == currentUser.Id);
+
             return View(await applicationDbContext.ToListAsync());
         }
 
@@ -58,11 +61,13 @@ namespace BookCase.Controllers
         }
 
         // GET: Books/Create
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
-            ViewData["AuthorId"] = new SelectList(_context.Author, "Id", "FirstName");
-            ViewData["OwnerId"] = new SelectList(_context.User, "Id", "Id");
-            return View();
+            var viewModel = new BookCreateViewModel
+            {
+                AvailableAuthors = await _context.Author.ToListAsync(),
+            };            
+            return View(viewModel);
         }
 
         // POST: Books/Create
@@ -70,24 +75,28 @@ namespace BookCase.Controllers
         // more details see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Isbn,Title,Genre,PublishDate,AuthorId")] Book book)
+        public async Task<IActionResult> Create(BookCreateViewModel viewModel)
         {
-            ModelState.Remove("Author");
-            ModelState.Remove("Owner");
-            ModelState.Remove("OwnerId");
+            // Removing model state errors since we are using a view model and do not need these properties from the base model.
+            ModelState.Remove("Book.Author");
+            ModelState.Remove("Book.Owner");
+            ModelState.Remove("Book.OwnerId");
+
             if (ModelState.IsValid)
             {
+                var book = viewModel.Book;
                 var currentUser = await _userManager.GetUserAsync(HttpContext.User);
                 book.OwnerId = currentUser.Id;
                 _context.Add(book);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["AuthorId"] = new SelectList(_context.Author, "Id", "FirstName", book.AuthorId);
-            ViewData["OwnerId"] = new SelectList(_context.User, "Id", "Id", book.OwnerId);
-            return View(book);
+
+            viewModel.AvailableAuthors = await _context.Author.ToListAsync();
+            return View(viewModel);
         }
 
+        
         // GET: Books/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
@@ -95,15 +104,17 @@ namespace BookCase.Controllers
             {
                 return NotFound();
             }
-
             var book = await _context.Book.FindAsync(id);
             if (book == null)
             {
                 return NotFound();
             }
-            ViewData["AuthorId"] = new SelectList(_context.Author, "Id", "FirstName", book.AuthorId);
-            
-            return View(book);
+            var viewModel = new BookEditViewModel
+            {
+                Book = book,
+                AvailableAuthors = await _context.Author.ToListAsync()
+            };                        
+            return View(viewModel);
         }
 
         // POST: Books/Edit/5
@@ -111,17 +122,24 @@ namespace BookCase.Controllers
         // more details see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Isbn,Title,Genre,PublishDate,AuthorId,OwnerId")] Book book)
+        public async Task<IActionResult> Edit(int id, BookEditViewModel viewModel)
         {
+            var book = viewModel.Book;
             if (id != book.Id)
             {
                 return NotFound();
             }
 
+            ModelState.Remove("Book.Author");
+            ModelState.Remove("Book.Owner");
+            ModelState.Remove("Book.OwnerId");
+
             if (ModelState.IsValid)
             {
                 try
                 {
+                    var currentUser = await _userManager.GetUserAsync(HttpContext.User);
+                    book.OwnerId = currentUser.Id;
                     _context.Update(book);
                     await _context.SaveChangesAsync();
                 }
@@ -138,8 +156,7 @@ namespace BookCase.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["AuthorId"] = new SelectList(_context.Author, "Id", "FirstName", book.AuthorId);
-            ViewData["OwnerId"] = new SelectList(_context.User, "Id", "Id", book.OwnerId);
+            viewModel.AvailableAuthors = await _context.Author.ToListAsync();
             return View(book);
         }
 
