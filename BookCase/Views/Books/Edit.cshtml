@@ -43,6 +43,9 @@
             </div>
         </form>
     </div>
+    <div class="col-md-8">
+        @await  Component.InvokeAsync("OtherBooksByAuthor", new { authorId = Model.Book.AuthorId, excludeBookId = Model.Book.Id })
+    </div>
 </div>
 
 <div>

@@ -9,6 +9,7 @@ using BookCase.Data;
 using BookCase.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using BookCase.Models.ViewModels;
 
 namespace BookCase.Controllers
 {   
@@ -130,13 +131,21 @@ namespace BookCase.Controllers
             }
 
             var author = await _context.Author
+                .Include(a => a.Books)
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (author == null)
             {
                 return NotFound();
             }
+            // NOTE: If the author has NO books, we can delete them.
+            //       If the author has some books, we cannot delete them.
+            var viewModel = new AuthorDeleteViewModel
+            {
+                Author = author,
+                CanDelete = author.Books.Count == 0
+            };
 
-            return View(author);
+            return View(viewModel);
         }
 
         // POST: Authors/Delete/5
@@ -144,7 +153,20 @@ namespace BookCase.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var author = await _context.Author.FindAsync(id);
+            // NOTE: This is changed from the default to prevent someone who is trying to 
+            //       maliciously post to this action from deleting the author
+            var author = await _context.Author
+                                        .Include(a => a.Books)
+                                        .FirstOrDefaultAsync(a => a.Id == id);
+            if (author == null)
+            {
+                return NotFound();
+            }
+            if (author.Books.Count > 0)
+            {
+                return Forbid();
+            }
+
             _context.Author.Remove(author);
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
